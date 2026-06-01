@@ -5,7 +5,12 @@ from datetime import datetime, timedelta
 
 file_path = "/data/payments.csv"
 last_position = 0
+
+# Store recent timestamps per user
 recent_payments = defaultdict(deque)
+
+# Store recent amounts per user
+recent_amounts = defaultdict(deque)
 
 print("Realtime monitor started", flush=True)
 
@@ -28,11 +33,41 @@ while True:
 
         print("Realtime received:", user, amount, flush=True)
 
-    
-        while recent_payments[user] and recent_payments[user][0] < now - timedelta(seconds=10):
+        # Rule 1: Payments over 3000
+        if amount > 3000:
+            print(
+                f"🚨 ALERT: Large payment detected: {user} paid {amount}",
+                flush=True
+            )
+
+        # Rule 2: Multiple payments within 10 seconds
+
+        # Add current payment timestamp
+        recent_payments[user].append(now)
+
+        # Remove timestamps older than 10 seconds
+        while (
+            recent_payments[user]
+            and recent_payments[user][0] < now - timedelta(seconds=10)
+        ):
             recent_payments[user].popleft()
 
         if len(recent_payments[user]) >= 3:
-            print("🚨 ALERT: Many payments in short time:", user, flush=True)
+            print(
+                f"🚨 ALERT: Many payments in short time: {user}",
+                flush=True
+            )
 
-    time.sleep(1)
+        # Rule 3: Repeated payment amounts
+
+        recent_amounts[user].append(amount)
+
+        # Keep only the last 5 amounts
+        if len(recent_amounts[user]) > 5:
+            recent_amounts[user].popleft()
+
+        if recent_amounts[user].count(amount) >= 3:
+            print(
+                f"🚨 ALERT: Repeated payment amount: {user} amount={amount}",
+                flush=True
+            )
